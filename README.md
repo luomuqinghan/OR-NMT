@@ -1,5 +1,5 @@
 
-## OR-NMT: Bridging the Gap between Training and Inference for Neural Machine Translation
+# OR-NMT: Bridging the Gap between Training and Inference for Neural Machine Translation
 
 > Wen Zhang, Yang Feng, Fandong Meng, Di You and Qun Liu. Bridging the Gap between Training and Inference for Neural Machine Translation. In Proceedings of ACL, 2019. [\[paper\]](https://www.aclweb.org/anthology/P19-1426.pdf)[\[code\]](https://github.com/ictnlp/OR-NMT)
 
@@ -7,11 +7,11 @@ Codes in the two directories are the OR-NMT systems based on the RNNsearch and T
 + OR-RNNsearch: based on the RNNsearch system which we implemented from scratch
 + OR-Transformer: based on the Transformer system [fairseq](https://github.com/pytorch/fairseq) implemented by Facebook
 
-### Runtime Environment
+## Runtime Environment
 This system has been tested in the following environment.
 + OS: Ubuntu 16.04.1 LTS 64 bits
-+ \>=Python 3.6
-+ \>=Pytorch 1.2
++ Python version \>=3.6
++ Pytorch version \>=1.2
 
 For OR-Transformer:
 
@@ -42,11 +42,12 @@ python train.py $data_dir \
 	--use-word-level-oracles --use-epoch-numbers-decay --decay-k 10 | tee -a $model_dir/training.log
 ```
 
-### NOTE:
+## NOTE
 + The speed of word-level training is almost the same as original transformer.
 + Sentence-level training is slower than word-level training.
 + The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
 
+## Citation
 please cite as:
 ```bibtex
 @inproceedings{zhang2019bridging,
