@@ -18,7 +18,7 @@ The following command will train a `hMoElp` model with `3` experts:
 fairseq-train --ddp-backend='no_c10d' \
     data-bin/wmt17_en_de \
     --max-update 100000 \
-    --task translation_moe \
+    --task translation_moe --user-dir examples/translation_moe/src \
     --method hMoElp --mean-pool-gating-network \
     --num-experts 3 \
     --arch transformer_wmt_en_de --share-all-embeddings \
@@ -37,7 +37,7 @@ For example, to generate from expert 0:
 fairseq-generate data-bin/wmt17_en_de \
     --path checkpoints/checkpoint_best.pt \
     --beam 1 --remove-bpe \
-    --task translation_moe \
+    --task translation_moe --user-dir examples/translation_moe/src \
     --method hMoElp --mean-pool-gating-network \
     --num-experts 3 \
     --gen-expert 0
@@ -52,7 +52,6 @@ wget dl.fbaipublicfiles.com/fairseq/data/wmt14-en-de.extra_refs.tok
 
 Next apply BPE on the fly and run generation for each expert:
 ```bash
-BPEROOT=examples/translation/subword-nmt/
 BPE_CODE=examples/translation/wmt17_en_de/code
 for EXPERT in $(seq 0 2); do \
     cat wmt14-en-de.extra_refs.tok \
@@ -62,7 +61,7 @@ for EXPERT in $(seq 0 2); do \
         --beam 1 \
         --bpe subword_nmt --bpe-codes $BPE_CODE \
         --buffer-size 500 --max-tokens 6000 \
-        --task translation_moe \
+        --task translation_moe --user-dir examples/translation_moe/src \
         --method hMoElp --mean-pool-gating-network \
         --num-experts 3 \
         --gen-expert $EXPERT ; \

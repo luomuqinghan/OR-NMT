@@ -95,13 +95,13 @@ class WSCTask(FairseqTask):
             prefix + leading_space + txt + trailing_space + suffix,
             append_eos=True,
         )
-        mask = torch.zeros_like(toks, dtype=torch.uint8)
+        mask = torch.zeros_like(toks, dtype=torch.bool)
         mask_start = len(self.binarize(prefix))
         mask_size = len(self.binarize(leading_space + txt))
         mask[mask_start:mask_start + mask_size] = 1
         return toks, mask
 
-    def load_dataset(self, split, epoch=0, combine=False, data_path=None, return_only=False, **kwargs):
+    def load_dataset(self, split, epoch=1, combine=False, data_path=None, return_only=False, **kwargs):
         """Load a given dataset split.
 
         Args:
@@ -227,7 +227,7 @@ class WSCTask(FairseqTask):
 
         def get_masked_input(tokens, mask):
             masked_tokens = tokens.clone()
-            masked_tokens[mask] = self.mask
+            masked_tokens[mask.bool()] = self.mask
             return masked_tokens
 
         def get_lprobs(tokens, mask):
@@ -252,7 +252,7 @@ class WSCTask(FairseqTask):
             best_idx = cand_lprobs.argmax().item()
             full_cand = sample['candidate_tokens'][0][best_idx]
             mask = sample['candidate_masks'][0][best_idx]
-            toks = full_cand[mask]
+            toks = full_cand[mask.bool()]
             return self.bpe.decode(self.source_dictionary.string(toks)).strip()
 
     @property
@@ -281,7 +281,7 @@ class WinograndeTask(WSCTask):
 
         return cls(args, vocab)
 
-    def load_dataset(self, split, epoch=0, combine=False, data_path=None, return_only=False, **kwargs):
+    def load_dataset(self, split, epoch=1, combine=False, data_path=None, return_only=False, **kwargs):
         """Load a given dataset split.
 
         Args:

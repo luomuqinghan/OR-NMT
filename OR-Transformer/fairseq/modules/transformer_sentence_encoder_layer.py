@@ -22,15 +22,13 @@ class TransformerSentenceEncoderLayer(nn.Module):
 
     def __init__(
         self,
-        embedding_dim: float = 768,
-        ffn_embedding_dim: float = 3072,
-        num_attention_heads: float = 8,
+        embedding_dim: int = 768,
+        ffn_embedding_dim: int = 3072,
+        num_attention_heads: int = 8,
         dropout: float = 0.1,
         attention_dropout: float = 0.1,
         activation_dropout: float = 0.1,
         activation_fn: str = 'relu',
-        add_bias_kv: bool = False,
-        add_zero_attn: bool = False,
         export: bool = False,
     ) -> None:
 
@@ -46,8 +44,8 @@ class TransformerSentenceEncoderLayer(nn.Module):
             self.embedding_dim,
             num_attention_heads,
             dropout=attention_dropout,
-            add_bias_kv=add_bias_kv,
-            add_zero_attn=add_zero_attn,
+            add_bias_kv=False,
+            add_zero_attn=False,
             self_attention=True
         )
 

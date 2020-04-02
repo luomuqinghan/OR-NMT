@@ -6,16 +6,20 @@
 Base classes for various fairseq models.
 """
 
-from typing import Dict, List, Optional
+import logging
+from typing import Dict, List, Optional, Tuple
 
-import numpy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from fairseq import utils
+from fairseq.checkpoint_utils import prune_state_dict
 from fairseq.data import Dictionary
 from fairseq.models import FairseqDecoder, FairseqEncoder
+from torch import Tensor
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseFairseqModel(nn.Module):
@@ -33,15 +37,33 @@ class BaseFairseqModel(nn.Module):
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""
-        raise NotImplementedError('Model must implement the build_model method')
+        raise NotImplementedError("Model must implement the build_model method")
 
     def get_targets(self, sample, net_output):
         """Get targets from either the sample or the net's output."""
-        return sample['target']
+        return sample["target"]
 
-    def get_normalized_probs(self, net_output, log_probs, sample=None):
+    def get_normalized_probs(
+        self,
+        net_output: Tuple[Tensor, Dict[str, List[Optional[Tensor]]]],
+        log_probs: bool,
+        sample: Optional[Dict[str, Tensor]] = None,
+    ):
         """Get normalized probabilities (or log probs) from a net's output."""
-        if hasattr(self, 'decoder'):
+        return self.get_normalized_probs_scriptable(net_output, log_probs, sample)
+
+    # TorchScript doesn't support super() method so that the scriptable Subclass
+    # can't access the base class model in Torchscript.
+    # Current workaround is to add a helper function with different name and
+    # call the helper function from scriptable Subclass.
+    def get_normalized_probs_scriptable(
+        self,
+        net_output: Tuple[Tensor, Dict[str, List[Optional[Tensor]]]],
+        log_probs: bool,
+        sample: Optional[Dict[str, Tensor]] = None,
+    ):
+        """Scriptable helper function for get_normalized_probs in ~BaseFairseqModel"""
+        if hasattr(self, "decoder"):
             return self.decoder.get_normalized_probs(net_output, log_probs, sample)
         elif torch.is_tensor(net_output):
             logits = net_output.float()
@@ -59,7 +81,7 @@ class BaseFairseqModel(nn.Module):
         """Maximum length supported by the model."""
         return None
 
-    def load_state_dict(self, state_dict, strict=True):
+    def load_state_dict(self, state_dict, strict=True, args=None):
         """Copies parameters and buffers from *state_dict* into this module and
         its descendants.
 
@@ -67,11 +89,12 @@ class BaseFairseqModel(nn.Module):
         this additionally "upgrades" *state_dicts* from old checkpoints.
         """
         self.upgrade_state_dict(state_dict)
-        return super().load_state_dict(state_dict, strict)
+        new_state_dict = prune_state_dict(state_dict, args)
+        return super().load_state_dict(new_state_dict, strict)
 
     def upgrade_state_dict(self, state_dict):
         """Upgrade old state dicts to work with newer code."""
-        self.upgrade_state_dict_named(state_dict, '')
+        self.upgrade_state_dict_named(state_dict, "")
 
     def upgrade_state_dict_named(self, state_dict, name):
         """Upgrade old state dicts to work with newer code.
@@ -84,17 +107,26 @@ class BaseFairseqModel(nn.Module):
 
         def do_upgrade(m, prefix):
             if len(prefix) > 0:
-                prefix += '.'
+                prefix += "."
 
             for n, c in m.named_children():
                 name = prefix + n
-                if hasattr(c, 'upgrade_state_dict_named'):
+                if hasattr(c, "upgrade_state_dict_named"):
                     c.upgrade_state_dict_named(state_dict, name)
-                elif hasattr(c, 'upgrade_state_dict'):
+                elif hasattr(c, "upgrade_state_dict"):
                     c.upgrade_state_dict(state_dict)
                 do_upgrade(c, name)
 
         do_upgrade(self, name)
+
+    def set_num_updates(self, num_updates):
+        """ State from trainer to pass along to model at every update """
+
+        def _apply(m):
+            if hasattr(m, 'set_num_updates') and m != self:
+                m.set_num_updates(num_updates)
+        self.apply(_apply)
+
 
     def make_generation_fast_(self, **kwargs):
         """Optimize model for faster generation."""
@@ -114,8 +146,11 @@ class BaseFairseqModel(nn.Module):
         seen = set()
 
         def apply_make_generation_fast_(module):
-            if module != self and hasattr(module, 'make_generation_fast_') \
-                    and module not in seen:
+            if (
+                module != self
+                and hasattr(module, "make_generation_fast_")
+                and module not in seen
+            ):
                 seen.add(module)
                 module.make_generation_fast_(**kwargs)
 
@@ -123,7 +158,7 @@ class BaseFairseqModel(nn.Module):
 
         def train(mode=True):
             if mode:
-                raise RuntimeError('cannot train after make_generation_fast')
+                raise RuntimeError("cannot train after make_generation_fast")
 
         # this model should no longer be used for training
         self.eval()
@@ -134,15 +169,24 @@ class BaseFairseqModel(nn.Module):
         seen = set()
 
         def apply_prepare_for_onnx_export_(module):
-            if module != self and hasattr(module, 'prepare_for_onnx_export_') \
-                    and module not in seen:
+            if (
+                module != self
+                and hasattr(module, "prepare_for_onnx_export_")
+                and module not in seen
+            ):
                 seen.add(module)
                 module.prepare_for_onnx_export_(**kwargs)
 
         self.apply(apply_prepare_for_onnx_export_)
 
     @classmethod
-    def from_pretrained(cls, model_name_or_path, checkpoint_file='model.pt', data_name_or_path='.', **kwargs):
+    def from_pretrained(
+        cls,
+        model_name_or_path,
+        checkpoint_file="model.pt",
+        data_name_or_path=".",
+        **kwargs,
+    ):
         """
         Load a :class:`~fairseq.models.FairseqModel` from a pre-trained model
         file. Downloads and caches the pre-trained model file if needed.
@@ -165,6 +209,7 @@ class BaseFairseqModel(nn.Module):
                 model archive path.
         """
         from fairseq import hub_utils
+
         x = hub_utils.from_pretrained(
             model_name_or_path,
             checkpoint_file,
@@ -172,44 +217,13 @@ class BaseFairseqModel(nn.Module):
             archive_map=cls.hub_models(),
             **kwargs,
         )
-        print(x['args'])
-        return hub_utils.GeneratorHubInterface(x['args'], x['task'], x['models'])
+        logger.info(x["args"])
+        return hub_utils.GeneratorHubInterface(x["args"], x["task"], x["models"])
 
     @classmethod
     def hub_models(cls):
         return {}
 
-'''
-    or_type:
-        1: linear decay
-        2: exponential decay
-        3: inverse sigmoid decay
-
-    k < 1. for exponential decay
-    k >= 1. for inverse sigmoid decay
-'''
-def or_decay_prob(i, or_type=3, k=12):
-
-    if or_type == 1:    # Linear decay
-        or_prob_begin, or_prob_end = 1., 0.
-        or_decay_rate = (or_prob_begin - or_prob_end) / 10.
-        prob = or_prob_begin - ( ss_decay_rate * i )
-        if prob < or_prob_end:
-            prob_i = or_prob_end
-            print('[Linear] schedule sampling probability do not change {}'.format(prob_i))
-        else:
-            prob_i = prob
-            print('[Linear] decay schedule sampling probability to {}'.format(prob_i))
-
-    elif or_type == 2:  # Exponential decay
-        prob_i = numpy.power(k, i)
-        print('[Exponential] decay schedule sampling probability to {}'.format(prob_i))
-
-    elif or_type == 3:  # Inverse sigmoid decay
-        prob_i = k / ( k + numpy.exp( ( i / k ) ) )
-        #print('[Inverse] decay schedule sampling probability to {}'.format(prob_i))
-
-    return prob_i
 
 class FairseqEncoderDecoderModel(BaseFairseqModel):
     """Base class for encoder-decoder models.
@@ -227,28 +241,7 @@ class FairseqEncoderDecoderModel(BaseFairseqModel):
         assert isinstance(self.encoder, FairseqEncoder)
         assert isinstance(self.decoder, FairseqDecoder)
 
-    def sample_prev_tokens(self, prev_gold_toks, gen_next_toks,
-                           epoch_idx=None, num_updates=None, bos_idx=0):
-        '''
-        here, we generate the new prev_output_tokens either from ground-truth or from the generation
-        '''
-        #print('epoch_idx: {}, num_updates: {}, bos_idx: {}'.format(epoch_idx, num_updates, bos_idx))
-
-        # Concatenate one column of bos_idx in the front of the generated next tokens tensor,
-        # and Move one step forward for the generated next tokens
-        # --------- not long teacher-forcing
-        gen_next_toks = torch.cat([bos_idx * torch.ones((gen_next_toks.size(0), 1), dtype=torch.int64).cuda(),
-                                   gen_next_toks], dim=1)[:, :-1]
-
-        # Sample the previous tokens tensor which is used to feed into the decoder
-        sample_gold_prob = or_decay_prob(epoch_idx)
-        sample_gold_prob = sample_gold_prob * torch.ones_like(prev_gold_toks, dtype=torch.float32)
-        sample_gold_mask = torch.bernoulli(sample_gold_prob).long()
-
-        return prev_gold_toks * sample_gold_mask + gen_next_toks * (1 - sample_gold_mask)
-
-    def forward(self, src_tokens, src_lengths, prev_output_tokens,
-                epoch_idx=None, num_updates=None, bos_idx=None, is_test=False, **kwargs):
+    def forward(self, src_tokens, src_lengths, prev_output_tokens, **kwargs):
         """
         Run the forward pass for an encoder-decoder model.
 
@@ -272,23 +265,13 @@ class FairseqEncoderDecoderModel(BaseFairseqModel):
                 - a dictionary with any model-specific outputs
         """
         encoder_out = self.encoder(src_tokens, src_lengths=src_lengths, **kwargs)
-        # encoder_out.size(): ( src_len * B * 512 )
-        #print('\nprev_output_tokens.size(): {}'.format(prev_output_tokens.size())) # ( B * tgt_len )
-        decoder_out = self.decoder(prev_output_tokens, encoder_out=encoder_out, **kwargs)
-
-        #print('\nis_test ? {}'.format(is_test))
-        if is_test is False:    # set False for the baseline model
-            prev_output_tokens = self.sample_prev_tokens(
-                prev_output_tokens, decoder_out[0].max(-1)[1],
-                epoch_idx=epoch_idx, num_updates=num_updates, bos_idx=bos_idx)
-
-            #print('sample prev_output_tokens.size(): {}'.format(prev_output_tokens.size())) #B*tgt_len
-            decoder_out = self.decoder(prev_output_tokens, encoder_out=encoder_out, **kwargs)
-        # decoder_out[0].size(): ( B * tgt_len * V )
-        # decoder_out[1]['attn']: None for self-attention
-        # decoder_out[1][inner_states].len(): ( 7 )
-        # decoder_out[1][inner_states][0].size(): (tgt_len * B * 512)
+        decoder_out = self.decoder(
+            prev_output_tokens, encoder_out=encoder_out, **kwargs
+        )
         return decoder_out
+
+    def forward_decoder(self, prev_output_tokens, **kwargs):
+        return self.decoder(prev_output_tokens, **kwargs)
 
     def extract_features(self, src_tokens, src_lengths, prev_output_tokens, **kwargs):
         """
@@ -300,7 +283,9 @@ class FairseqEncoderDecoderModel(BaseFairseqModel):
                 - a dictionary with any model-specific outputs
         """
         encoder_out = self.encoder(src_tokens, src_lengths=src_lengths, **kwargs)
-        features = self.decoder.extract_features(prev_output_tokens, encoder_out=encoder_out, **kwargs)
+        features = self.decoder.extract_features(
+            prev_output_tokens, encoder_out=encoder_out, **kwargs
+        )
         return features
 
     def output_layer(self, features, **kwargs):
@@ -317,12 +302,11 @@ class FairseqEncoderDecoderModel(BaseFairseqModel):
 
 
 class FairseqModel(FairseqEncoderDecoderModel):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         utils.deprecation_warning(
-            'FairseqModel is deprecated, please use FairseqEncoderDecoderModel '
-            'or BaseFairseqModel instead',
+            "FairseqModel is deprecated, please use FairseqEncoderDecoderModel "
+            "or BaseFairseqModel instead",
             stacklevel=4,
         )
 
@@ -338,10 +322,12 @@ class FairseqMultiModel(BaseFairseqModel):
             assert isinstance(encoders[key], FairseqEncoder)
             assert isinstance(decoders[key], FairseqDecoder)
 
-        self.models = nn.ModuleDict({
-            key: FairseqModel(encoders[key], decoders[key])
-            for key in self.keys
-        })
+        self.models = nn.ModuleDict(
+            {
+                key: FairseqEncoderDecoderModel(encoders[key], decoders[key])
+                for key in self.keys
+            }
+        )
 
     @staticmethod
     def build_shared_embeddings(
@@ -365,29 +351,30 @@ class FairseqMultiModel(BaseFairseqModel):
         shared_dict = dicts[langs[0]]
         if any(dicts[lang] != shared_dict for lang in langs):
             raise ValueError(
-                '--share-*-embeddings requires a joined dictionary: '
-                '--share-encoder-embeddings requires a joined source '
-                'dictionary, --share-decoder-embeddings requires a joined '
-                'target dictionary, and --share-all-embeddings requires a '
-                'joint source + target dictionary.'
+                "--share-*-embeddings requires a joined dictionary: "
+                "--share-encoder-embeddings requires a joined source "
+                "dictionary, --share-decoder-embeddings requires a joined "
+                "target dictionary, and --share-all-embeddings requires a "
+                "joint source + target dictionary."
             )
-        return build_embedding(
-            shared_dict, embed_dim, pretrained_embed_path
-        )
+        return build_embedding(shared_dict, embed_dim, pretrained_embed_path)
 
     def forward(self, src_tokens, src_lengths, prev_output_tokens, **kwargs):
         decoder_outs = {}
         for key in self.keys:
             encoder_out = self.models[key].encoder(src_tokens, src_lengths, **kwargs)
             decoder_outs[key] = self.models[key].decoder(
-                prev_output_tokens, encoder_out, **kwargs,
+                prev_output_tokens, encoder_out, **kwargs
             )
         return decoder_outs
 
     def max_positions(self):
         """Maximum length supported by the model."""
         return {
-            key: (self.models[key].encoder.max_positions(), self.models[key].decoder.max_positions())
+            key: (
+                self.models[key].encoder.max_positions(),
+                self.models[key].decoder.max_positions(),
+            )
             for key in self.keys
         }
 
@@ -402,6 +389,20 @@ class FairseqMultiModel(BaseFairseqModel):
     @property
     def decoder(self):
         return self.models[self.keys[0]].decoder
+
+    def forward_decoder(self, prev_output_tokens, **kwargs):
+        return self.decoder(prev_output_tokens, **kwargs)
+
+    def load_state_dict(self, state_dict, strict=True, args=None):
+        """Copies parameters and buffers from *state_dict* into this module and
+        its descendants.
+
+        Overrides the method in :class:`nn.Module`. Compared with that method
+        this additionally "upgrades" *state_dicts* from old checkpoints.
+        """
+        self.upgrade_state_dict(state_dict)
+        new_state_dict = prune_state_dict(state_dict, args)
+        return super().load_state_dict(new_state_dict, strict)
 
 
 class FairseqLanguageModel(BaseFairseqModel):
@@ -434,6 +435,9 @@ class FairseqLanguageModel(BaseFairseqModel):
         """
         return self.decoder(src_tokens, **kwargs)
 
+    def forward_decoder(self, prev_output_tokens, **kwargs):
+        return self.decoder(prev_output_tokens, **kwargs)
+
     def extract_features(self, src_tokens, **kwargs):
         """
         Similar to *forward* but only return features.
@@ -459,7 +463,7 @@ class FairseqLanguageModel(BaseFairseqModel):
 
     @property
     def supported_targets(self):
-        return {'future'}
+        return {"future"}
 
 
 class FairseqEncoderModel(BaseFairseqModel):
@@ -491,7 +495,7 @@ class FairseqEncoderModel(BaseFairseqModel):
 
     def get_normalized_probs(self, net_output, log_probs, sample=None):
         """Get normalized probabilities (or log probs) from a net's output."""
-        encoder_out = net_output['encoder_out']
+        encoder_out = net_output["encoder_out"]
         if torch.is_tensor(encoder_out):
             logits = encoder_out.float()
             if log_probs:
