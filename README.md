@@ -47,6 +47,26 @@ python train.py $data_dir \
 + Sentence-level training is slower than word-level training.
 + The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
 
+please cite as:
+```bibtex
+@inproceedings{zhang2019bridging,
+    title = "Bridging the Gap between Training and Inference for Neural Machine Translation",
+    author = "Zhang, Wen  and
+      Feng, Yang  and
+      Meng, Fandong  and
+      You, Di  and
+      Liu, Qun",
+    booktitle = "Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics",
+    month = jul,
+    year = "2019",
+    address = "Florence, Italy",
+    publisher = "Association for Computational Linguistics",
+    url = "https://www.aclweb.org/anthology/P19-1426",
+    doi = "10.18653/v1/P19-1426",
+    pages = "4334--4343",
+}
+```
+
 <p align="center">
   <img src="fairseq_logo.png" width="150">
   <br />
