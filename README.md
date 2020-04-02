@@ -25,11 +25,6 @@ The decay probability is decayed based on the update index defaultly.
 + add '--**use-epoch-numbers-decay**' for decaying based on the epoch index.
 + --**decay-k**: the hyper-parameter to control the speed of the inverse sigmoid decay.
 
-### NOTE:
-+ The speed of word-level training is almost the same as original transformer.
-+ Sentence-level training is slower than word-level training.
-+ The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
-
 Example of the training script for word-level oracle and decay the probability by epoch index:
 ```shell
 data_dir=directory_of_data_bin
@@ -44,8 +39,13 @@ python train.py $data_dir \
     --seed 1111 --skip-invalid-size-inputs-valid-test \
     --distributed-port 28888 --distributed-world-size 4 --ddp-backend=no_c10d \
     --source-lang en --target-lang de --save-dir $model_dir \
-	--**use-word-level-oracles** --**use-epoch-numbers-decay** --**decay-k** **10** | tee -a $model_dir/training.log
+	--use-word-level-oracles --use-epoch-numbers-decay --decay-k 10 | tee -a $model_dir/training.log
 ```
+
+### NOTE:
++ The speed of word-level training is almost the same as original transformer.
++ Sentence-level training is slower than word-level training.
++ The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
 
 <p align="center">
   <img src="fairseq_logo.png" width="150">
