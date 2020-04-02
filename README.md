@@ -1,7 +1,7 @@
 
 ## OR-NMT: Bridging the Gap between Training and Inference for Neural Machine Translation
 
-> Wen Zhang, Yang Feng, Fandong Meng, Di You and Qun Liu. Bridging the Gap between Training and Inference for Neural Machine Translation. In Proceedings of ACL, 2019. [\[paper\]](https://www.aclweb.org/anthology/P19-1426.pdf)[\[code\]](https://github.com/ictnlp/CPDecoder/blob/master/searchs/cp.py)
+> Wen Zhang, Yang Feng, Fandong Meng, Di You and Qun Liu. Bridging the Gap between Training and Inference for Neural Machine Translation. In Proceedings of ACL, 2019. [\[paper\]](https://www.aclweb.org/anthology/P19-1426.pdf)[\[code\]](https://github.com/ictnlp/OR-NMT)
 
 Codes in the two directories are the OR-NMT systems based on the RNNsearch and Transformer models correspondingly
 + OR-RNNsearch: based on the RNNsearch system which we implemented from scratch
