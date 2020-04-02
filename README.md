@@ -25,7 +25,7 @@ The decay probability is decayed based on the update index defaultly.
 + add '--**use-epoch-numbers-decay**' for decaying based on the epoch index.
 + --**decay-k**: the hyper-parameter to control the speed of the inverse sigmoid decay.
 
-Example of the training script for word-level oracle and decay the probability by epoch index:
+Example of the script for word-level training and decaying the probability based on epoch index:
 ```shell
 data_dir=directory_of_data_bin
 model_dir=./ckpt
