@@ -64,7 +64,7 @@ please cite as:
 ```
 
 <p align="center">
-  <img src="fairseq_logo.png" width="150">
+  <img src="./OR-Transformer/fairseq_logo.png" width="150">
   <br />
   <br />
   <a href="https://github.com/pytorch/fairseq/blob/master/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
