@@ -9,7 +9,7 @@ Codes in the two directories are the OR-NMT systems based on the RNNsearch and T
 
 ### Runtime Environment
 This system has been tested in the following environment.
-+ Ubuntu 16.04.1 LTS 64 bits
++ OS: Ubuntu 16.04.1 LTS 64 bits
 + \>=Python 3.6
 + \>=Pytorch 1.2
 
