@@ -51,11 +51,7 @@ please cite as:
 ```bibtex
 @inproceedings{zhang2019bridging,
     title = "Bridging the Gap between Training and Inference for Neural Machine Translation",
-    author = "Zhang, Wen  and
-      Feng, Yang  and
-      Meng, Fandong  and
-      You, Di  and
-      Liu, Qun",
+    author = "Zhang, Wen and Feng, Yang and Meng, Fandong and You, Di and Liu, Qun",
     booktitle = "Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics",
     month = jul,
     year = "2019",
