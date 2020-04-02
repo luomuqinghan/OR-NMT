@@ -18,20 +18,19 @@ For OR-Transformer:
 First, go into the OR-Transformer directory.
 
 Then, the training script is the same with fairseq, except for the following arguments:
-+ add '--use-word-level-oracles' for training Transformer by word-level oracle.
-+ add '--use-sentence-level-oracles' for training Transformer by word-level oracle.
++ add '--**use-word-level-oracles**' for training Transformer by word-level oracle.
++ add '--**use-sentence-level-oracles**' for training Transformer by word-level oracle.
 
-the decay probability is decayed based on the update index defaultly.
-+ add '--use-epoch-numbers-decay' for decaying based on the epoch index.
-
---decay-k: the hyper-parameter to control the speed of the inverse sigmoid decay.
+The decay probability is decayed based on the update index defaultly.
++ add '--**use-epoch-numbers-decay**' for decaying based on the epoch index.
++ --**decay-k**: the hyper-parameter to control the speed of the inverse sigmoid decay.
 
 ### NOTE:
 + The speed of word-level training is almost the same as original transformer.
 + Sentence-level training is slower than word-level training.
 + The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
 
-example of the training script:
+Example of the training script for word-level oracle and decay the probability by epoch index:
 ```shell
 data_dir=directory_of_data_bin
 model_dir=./ckpt
@@ -44,7 +43,8 @@ python train.py $data_dir \
     --log-interval 10 --save-interval-updates 10000 --keep-interval-updates 10 --save-interval 10000 \
     --seed 1111 --skip-invalid-size-inputs-valid-test \
     --distributed-port 28888 --distributed-world-size 4 --ddp-backend=no_c10d \
-    --source-lang en --target-lang de --save-dir $model_dir | tee -a $model_dir/training.log
+    --source-lang en --target-lang de --save-dir $model_dir \
+	--**use-word-level-oracles** --**use-epoch-numbers-decay** --**decay-k** **10** | tee -a $model_dir/training.log
 ```
 
 <p align="center">
