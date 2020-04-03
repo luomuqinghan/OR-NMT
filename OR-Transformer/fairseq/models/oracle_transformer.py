@@ -54,6 +54,9 @@ class TransformerModel(FairseqEncoderDecoderModel):
         self.epoch = 0
         self.decay_k = args.decay_k
         self.epoch_decay = args.use_epoch_numbers_decay
+        self.use_greed_gumbel_noise = args.use_greed_gumbel_noise
+        self.gumbel_noise = args.gumbel_noise
+        self.use_bleu_gumbel_noise = args.use_bleu_gumbel_noise
         self.probs = 0
 
     @staticmethod
@@ -130,14 +133,22 @@ class TransformerModel(FairseqEncoderDecoderModel):
         parser.add_argument('--no-scale-embedding', action='store_true',
                             help='if True, dont scale embeddings')
         # oracle arguments
-        parser.add_argument('--use-word-level-oracles', action='store_true', default=True,
-                            help='use word level oracles')
         parser.add_argument('--use-sentence-level-oracles', action='store_true', default=False,
                             help='use sentences level oracles')
-        parser.add_argument('--use-epoch-numbers-decay', action='store_true', default=True,
-                            help='probability decay by epoch number')
-        parser.add_argument('--decay-k', type=float, metavar='D', default=10,
+        parser.add_argument('--use-word-level-oracles', action='store_true', default=False,
+                            help='use word level oracles')
+        parser.add_argument('--decay-k', type=float, metavar='D', default=3000,
                             help='decay k')
+        parser.add_argument('--use-epoch-numbers-decay', action='store_true', default=False,
+                            help='probability decay by epoch number')
+        parser.add_argument('--use-greed-gumbel-noise', action='store_true', default=False,
+                            help='select word with gumbel noise')
+        parser.add_argument('--gumbel-noise', type=float, metavar='D', default=0.5,
+                            help='word noise')
+        parser.add_argument('--use-bleu-gumbel-noise', action='store_true', default=False,
+                            help='generate sentence with gumbel noise')
+        parser.add_argument('--oracle-search-beam-size', type=int, metavar='N', default=4,
+                            help='generate oracle sentence beam size')
 
     @classmethod
     def build_model(cls, args, task):
@@ -165,7 +176,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
                                                                  min_len_b=0,
                                                                  max_len_a=1,
                                                                  max_len_b=0, )
-            generator = SequenceGenerator(tgt_dict, beam_size=4, match_source_len=False,
+            generator = SequenceGenerator(tgt_dict, beam_size=args.oracle_search_beam_size, match_source_len=False,
                                           search_strategy=search_strategy)
         if args.share_all_embeddings:
             if src_dict != tgt_dict:
@@ -256,9 +267,12 @@ class TransformerModel(FairseqEncoderDecoderModel):
         self.probs = 0
         return tmp
 
-    def get_word_orcale_tokens(self, pred_logits, prev_output_tokens):
+    def get_word_orcale_tokens(self, pred_logits, prev_output_tokens, epsilon=1e-6):
         B, L = prev_output_tokens.size()
         # B x L x V
+        if self.use_greed_gumbel_noise:
+            pred_logits.data.add_(-torch.log(-torch.log(torch.Tensor(
+                pred_logits.size()).cuda().uniform_(0, 1) + epsilon) + epsilon)) / self.gumbel_noise
         pred_tokens = torch.max(pred_logits, dim=-1)[1]
         bos_idx = prev_output_tokens[0, 0]
         pred_tokens = torch.cat([(bos_idx * torch.ones((B, 1))).to(pred_tokens), pred_tokens], dim=1)[:, :-1]
@@ -281,7 +295,10 @@ class TransformerModel(FairseqEncoderDecoderModel):
         sample['net_input'] = {}
         sample['net_input']['src_tokens'] = src_tokens
         sample['net_input']['src_lengths'] = src_lengths
-        out = self.generator.generate([self], sample, target)
+        noise = None
+        if self.use_bleu_gumbel_noise:
+            noise = self.gumbel_noise
+        out = self.generator.generate([self], sample, target, noise=noise)
         sentence_oracle_inputs = torch.ones_like(target)
         i = 0
         for x, t in zip(out, target):
@@ -420,27 +437,6 @@ class TransformerEncoder(FairseqEncoder):
             cls_input: Optional[Tensor] = None,
             return_all_hiddens: bool = False,
     ):
-        """
-        Args:
-            src_tokens (LongTensor): tokens in the source language of shape
-                `(batch, src_len)`
-            src_lengths (torch.LongTensor): lengths of each source sentence of
-                shape `(batch)`
-            return_all_hiddens (bool, optional): also return all of the
-                intermediate hidden states (default: False).
-
-        Returns:
-            namedtuple:
-                - **encoder_out** (Tensor): the last encoder layer's output of
-                  shape `(src_len, batch, embed_dim)`
-                - **encoder_padding_mask** (ByteTensor): the positions of
-                  padding elements of shape `(batch, src_len)`
-                - **encoder_embedding** (Tensor): the (scaled) embedding lookup
-                  of shape `(batch, src_len, embed_dim)`
-                - **encoder_states** (List[Tensor]): all intermediate
-                  hidden states of shape `(src_len, batch, embed_dim)`.
-                  Only populated if *return_all_hiddens* is True.
-        """
         if self.layer_wise_attention:
             return_all_hiddens = True
 

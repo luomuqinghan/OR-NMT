@@ -77,7 +77,7 @@ class SequenceGenerator(object):
         )
 
     @torch.no_grad()
-    def generate(self, models, sample, target=None, **kwargs):
+    def generate(self, models, sample, target=None, noise=None, **kwargs):
         """Generate a batch of translations.
 
         Args:
@@ -89,7 +89,7 @@ class SequenceGenerator(object):
                 (default: self.eos)
         """
         model = EnsembleModel(models)
-        return self._generate(model, sample, target=target, **kwargs)
+        return self._generate(model, sample, target=target, noise=noise, **kwargs)
 
     @torch.no_grad()
     def _generate(
@@ -99,6 +99,7 @@ class SequenceGenerator(object):
             prefix_tokens=None,
             bos_token=None,
             target=None,
+            noise=None,
             **kwargs
     ):
         if not self.retain_dropout:
@@ -278,7 +279,10 @@ class SequenceGenerator(object):
                 tokens[:, :step + 1], encoder_outs, temperature=self.temperature,
             )
             lprobs[lprobs != lprobs] = -math.inf
-
+            if noise is not None:
+                epsilon = 1e-6
+                lprobs.data.add_(-torch.log(-torch.log(torch.Tensor(
+                    lprobs.size()).cuda().uniform_(0, 1) + epsilon) + epsilon)) / noise
             lprobs[:, self.pad] = -math.inf  # never select pad
             lprobs[:, self.unk] -= self.unk_penalty  # apply unk penalty
 

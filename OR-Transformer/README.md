@@ -1,33 +1,3 @@
-
-## OR-NMT: Bridging the Gap between Training and Inference for Neural Machine Translation
-
-> Wen Zhang, Yang Feng, Fandong Meng, Di You and Qun Liu. Bridging the Gap between Training and Inference for Neural Machine Translation. In Proceedings of ACL, 2019. [\[paper\]](https://www.aclweb.org/anthology/P19-1426.pdf)[\[code\]](https://github.com/ictnlp/CPDecoder/blob/master/searchs/cp.py)
-
-Code is implemented based on fairseq
-
-### Runtime Environment
-This system has been tested in the following environment.
-+ Ubuntu 16.04.1 LTS 64 bits
-+ \>=Python 3.6
-+ \>=Pytorch 1.2
-
-add '--use-word-level-oracles' for training Transformer by word-level oracle
-add '--use-sentence-level-oracles' for training Transformer by word-level oracle
-
-the decay probability is decayed based on the update index defaultly
-add '--use-epoch-numbers-decay' for decaying based on the epoch index
-
---decay-k: the hyper-parameter to control the speed of the inverse sigmoid decay
-
-# OR-NMT
-### Source code for the paper &lt;Bridging the Gap between Training and Inference for Neural Machine Translation>
-
-Codes in the two directories are the OR-NMT systems based on the RNNsearch and Transformer models correspondingly
-+ OR-RNNsearch: based on the RNNsearch system which we implemented from scratch
-+ OR-Transformer: based on the Transformer system [fairseq](https://github.com/pytorch/fairseq) implemented by Facebook
-+ \>= Pytorch 1.2.0
-
-
 <p align="center">
   <img src="fairseq_logo.png" width="150">
   <br />

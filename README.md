@@ -18,12 +18,21 @@ For OR-Transformer:
 First, go into the OR-Transformer directory.
 
 Then, the training script is the same with fairseq, except for the following arguments:
-+ add '--**use-word-level-oracles**' for training Transformer by word-level oracle.
-+ add '--**use-sentence-level-oracles**' for training Transformer by word-level oracle.
+- add `--use-word-level-oracles` for training Transformer by word-level oracle.
+- add `--use-sentence-level-oracles` for training Transformer by sentence-level oracle.
 
 The decay probability is decayed based on the update index defaultly.
-+ add '--**use-epoch-numbers-decay**' for decaying based on the epoch index.
-+ --**decay-k**: the hyper-parameter to control the speed of the inverse sigmoid decay.
+- add `--use-epoch-numbers-decay` for decaying based on the epoch index.
+- the hyper-parameter `--decay-k` is used to control the speed of the inverse sigmoid decay. The larger the value, the slower the decay, vice versa.
+  - set `8~15` for the decaying based on epoch index
+  - set `3000~8000` for the decaying based on update index
+
+Gumbel noise:
+- add `--use-greed-gumbel-noise` to sample word-level oracle with gumbel noise
+- add `--use-bleu-gumbel-noise` to sample sentence-level oracle with gumbel noise
+- `--gumbel-noise` is used as the hyper-parameter in the calculation of Gumbel noise
+- `--oracle-search-beam-size` is used to set the beam size in length-constrained decoding
+
 
 Example of the script for word-level training and decaying the probability based on epoch index:
 ```shell
