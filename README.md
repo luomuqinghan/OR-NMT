@@ -23,9 +23,10 @@ Then, the training script is the same with fairseq, except for the following arg
 
 By default, the probability is decayed based on the update index.
 - add `--use-epoch-numbers-decay` for decaying based on the epoch index.
-- the hyper-parameter `--decay-k` is used to control the speed of the inverse sigmoid decay. The larger the value, the slower the decay, vice versa.
+- the hyper-parameter `--decay-k` is used to control the speed of the inverse sigmoid decay.
   - set `8~15` for the decaying based on epoch index
   - set `3000~8000` for the decaying based on update index
+  - The larger the value, the slower the decay, vice versa.
 
 Gumbel noise:
 - add `--use-greed-gumbel-noise` to sample word-level oracle with gumbel noise
