@@ -36,6 +36,8 @@ Gumbel noise:
 
 Example of the script for word-level training and decaying the probability based on epoch index:
 ```shell
+batch_size=4096
+accum=2
 data_dir=directory_of_data_bin
 model_dir=./ckpt
 python train.py $data_dir \
