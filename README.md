@@ -21,7 +21,7 @@ Then, the training script is the same with fairseq, except for the following arg
 - add `--use-word-level-oracles` for training Transformer by word-level oracle.
 - add `--use-sentence-level-oracles` for training Transformer by sentence-level oracle.
 
-The decay probability is decayed based on the update index defaultly.
+By default, the probability is decayed based on the update index.
 - add `--use-epoch-numbers-decay` for decaying based on the epoch index.
 - the hyper-parameter `--decay-k` is used to control the speed of the inverse sigmoid decay. The larger the value, the slower the decay, vice versa.
   - set `8~15` for the decaying based on epoch index
