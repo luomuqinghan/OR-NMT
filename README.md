@@ -36,6 +36,7 @@ Gumbel noise:
 
 Example of the script for word-level training and decaying the probability based on epoch index:
 ```shell
+export CUDA_VISIBLE_DEVICES=0,1,2,3
 batch_size=4096
 accum=2
 data_dir=directory_of_data_bin
