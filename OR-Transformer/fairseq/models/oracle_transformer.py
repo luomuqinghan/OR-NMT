@@ -177,7 +177,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
                                                                  max_len_a=1,
                                                                  max_len_b=0, )
             generator = SequenceGenerator(tgt_dict, beam_size=args.oracle_search_beam_size, match_source_len=False,
-                                          search_strategy=search_strategy)
+                                          max_len_a=1, max_len_b=100, search_strategy=search_strategy)
         if args.share_all_embeddings:
             if src_dict != tgt_dict:
                 raise ValueError("--share-all-embeddings requires a joined dictionary")
