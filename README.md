@@ -69,7 +69,7 @@ Test training speed and GPU memory usage on iwslt de2en training set
 | ----- | ----- | -----
 | Transformer  | 4.39  | 2.65 
 | Word-level training | 4.57 | 2.25 
-| Sentence-level training (decay\_prob=1, beam\_size=4) | 4.75 | 1.70
+| Sentence-level training (decay\_prob=1, beam\_size=4) | 4.75 | 0.59
 
 ## Citation
 please cite as:
