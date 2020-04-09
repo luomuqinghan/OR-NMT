@@ -61,7 +61,7 @@ python train.py $data_dir \
 ## NOTE
 + The speed of word-level training is almost the same as original transformer.
 + Sentence-level training is slower than word-level training.
-+ The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
++ `--use-epoch-numbers-decay` and `--decay-k` need to be adapted on different training data.
 
 Test training speed and GPU memory usage on iwslt de2en training set
 
