@@ -64,10 +64,12 @@ python train.py $data_dir \
 + The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
 
 Test training speed and GPU memory usage on iwslt de2en training set
-|  model name   | memory usage (G) | training speed (upd/s)
-|  transformer  | 4.39  | 2.65
-| word-level training | 4.57 | 2.25
-| sentence-level training (decay\_prob=1, beam\_size=4) | 4.75 | 1.70
+
+| Model Name | Memory Usage (G) | Training Speed (upd/s) 
+| ----- | ----- | -----
+| Transformer  | 4.39  | 2.65 
+| Word-level training | 4.57 | 2.25 
+| Sentence-level training (decay\_prob=1, beam\_size=4) | 4.75 | 1.70
 
 ## Citation
 please cite as:
