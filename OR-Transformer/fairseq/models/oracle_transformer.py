@@ -272,7 +272,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         # B x L x V
         if self.use_greed_gumbel_noise:
             pred_logits.data.add_(-torch.log(-torch.log(torch.Tensor(
-                pred_logits.size()).cuda().uniform_(0, 1) + epsilon) + epsilon)) / self.gumbel_noise
+                pred_logits.size()).to(pred_logits).uniform_(0, 1) + epsilon) + epsilon)) / self.gumbel_noise
         pred_tokens = torch.max(pred_logits, dim=-1)[1]
         bos_idx = prev_output_tokens[0, 0]
         pred_tokens = torch.cat([(bos_idx * torch.ones((B, 1))).to(pred_tokens), pred_tokens], dim=1)[:, :-1]
@@ -288,6 +288,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         bleu = nltk.translate.bleu_score.sentence_bleu([ref_str], pre_str)
         return bleu
 
+    @torch.no_grad()
     def get_sentence_oracle_tokens(self, prev_output_tokens, src_tokens, src_lengths, target):
         bos_idx = prev_output_tokens[0, 0]
         B, L = prev_output_tokens.size()
@@ -340,12 +341,15 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
         encoder_out = self.encoder(src_tokens, src_lengths=src_lengths, cls_input=cls_input,
                                    return_all_hiddens=return_all_hiddens, )
+
+        if self.training and self.use_word_oracle:
+            with torch.no_grad():
+                decoder_out = self.decoder(prev_output_tokens, encoder_out=encoder_out, features_only=features_only,
+                                           src_lengths=src_lengths, return_all_hiddens=return_all_hiddens, )
+                sample_prev_tokens = self.get_word_orcale_tokens(decoder_out[0].detach(), prev_output_tokens)
+            prev_output_tokens = sample_prev_tokens
         decoder_out = self.decoder(prev_output_tokens, encoder_out=encoder_out, features_only=features_only,
                                    src_lengths=src_lengths, return_all_hiddens=return_all_hiddens, )
-        if self.training and self.use_word_oracle:
-            sample_prev_tokens = self.get_word_orcale_tokens(decoder_out[0].detach(), prev_output_tokens)
-            decoder_out = self.decoder(sample_prev_tokens, encoder_out=encoder_out, features_only=features_only,
-                                       src_lengths=src_lengths, return_all_hiddens=return_all_hiddens, )
 
         return decoder_out
 
@@ -971,3 +975,44 @@ def transformer_iwslt_de_en(args):
     args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 4)
     args.decoder_layers = getattr(args, "decoder_layers", 6)
     base_architecture(args)
+
+
+@register_model_architecture("oracle_transformer", "oracle_transformer_wmt_en_de")
+def transformer_wmt_en_de(args):
+    base_architecture(args)
+
+
+# parameters used in the "Attention Is All You Need" paper (Vaswani et al., 2017)
+@register_model_architecture("oracle_transformer", "oracle_transformer_vaswani_wmt_en_de_big")
+def transformer_vaswani_wmt_en_de_big(args):
+    args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 1024)
+    args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 4096)
+    args.encoder_attention_heads = getattr(args, "encoder_attention_heads", 16)
+    args.encoder_normalize_before = getattr(args, "encoder_normalize_before", False)
+    args.decoder_embed_dim = getattr(args, "decoder_embed_dim", 1024)
+    args.decoder_ffn_embed_dim = getattr(args, "decoder_ffn_embed_dim", 4096)
+    args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 16)
+    args.dropout = getattr(args, "dropout", 0.3)
+    base_architecture(args)
+
+
+@register_model_architecture("oracle_transformer", "oracle_transformer_vaswani_wmt_en_fr_big")
+def transformer_vaswani_wmt_en_fr_big(args):
+    args.dropout = getattr(args, "dropout", 0.1)
+    transformer_vaswani_wmt_en_de_big(args)
+
+
+@register_model_architecture("oracle_transformer", "oracle_transformer_wmt_en_de_big")
+def transformer_wmt_en_de_big(args):
+    args.attention_dropout = getattr(args, "attention_dropout", 0.1)
+    transformer_vaswani_wmt_en_de_big(args)
+
+
+# default parameters used in tensor2tensor implementation
+@register_model_architecture("oracle_transformer", "oracle_transformer_wmt_en_de_big_t2t")
+def transformer_wmt_en_de_big_t2t(args):
+    args.encoder_normalize_before = getattr(args, "encoder_normalize_before", True)
+    args.decoder_normalize_before = getattr(args, "decoder_normalize_before", True)
+    args.attention_dropout = getattr(args, "attention_dropout", 0.1)
+    args.activation_dropout = getattr(args, "activation_dropout", 0.1)
+    transformer_vaswani_wmt_en_de_big(args)

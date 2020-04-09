@@ -29,11 +29,14 @@ By default, the probability is decayed based on the update index.
   - The larger the value, the slower the decay, vice versa.
 
 Gumbel noise:
-- add `--use-greed-gumbel-noise` to sample word-level oracle with gumbel noise
-- add `--use-bleu-gumbel-noise` to sample sentence-level oracle with gumbel noise
+- add `--use-greed-gumbel-noise` to sample word-level oracle with Gumbel noise
+- add `--use-bleu-gumbel-noise` to sample sentence-level oracle with Gumbel noise
 - `--gumbel-noise` is used as the hyper-parameter in the calculation of Gumbel noise
 - `--oracle-search-beam-size` is used to set the beam size in length-constrained decoding
 
+As for the `--arch` argument, `oracle_` should be used as the prefix of the original arch 
+for OR-NMT training, such as:
+- `--arch transformer_vaswani_wmt_en_en_big` -> `--arch oracle_transformer_vaswani_wmt_en_en_big`
 
 Example of the script for word-level training and decaying the probability based on epoch index:
 ```shell
@@ -43,7 +46,7 @@ accum=2
 data_dir=directory_of_data_bin
 model_dir=./ckpt
 python train.py $data_dir \
-    --arch transformer_vaswani_wmt_en_de_big --share-all-embeddings \
+    --arch oracle_transformer_vaswani_wmt_en_de_big --share-all-embeddings \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 --lr-scheduler inverse_sqrt \
     --warmup-init-lr 1e-07 --warmup-updates 4000 --lr 0.0005 --min-lr 1e-09 \
     --weight-decay 0.0 --criterion label_smoothed_cross_entropy --label-smoothing 0.1 \
@@ -59,6 +62,12 @@ python train.py $data_dir \
 + The speed of word-level training is almost the same as original transformer.
 + Sentence-level training is slower than word-level training.
 + The arguments use-epoch-numbers-decay and decay-k need to be adjusted on different training data.
+
+Test training speed and GPU memory usage on iwslt de2en training set
+|  model name   | memory usage (G) | training speed (upd/s)
+|  transformer  | 4.39  | 2.65
+| word-level training | 4.57 | 2.25
+| sentence-level training (decay\_prob=1, beam\_size=4) | 4.75 | 1.70
 
 ## Citation
 please cite as:

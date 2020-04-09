@@ -282,7 +282,7 @@ class SequenceGenerator(object):
             if noise is not None:
                 epsilon = 1e-6
                 lprobs.data.add_(-torch.log(-torch.log(torch.Tensor(
-                    lprobs.size()).cuda().uniform_(0, 1) + epsilon) + epsilon)) / noise
+                    lprobs.size()).to(lprobs).uniform_(0, 1) + epsilon) + epsilon)) / noise
             lprobs[:, self.pad] = -math.inf  # never select pad
             lprobs[:, self.unk] -= self.unk_penalty  # apply unk penalty
 
