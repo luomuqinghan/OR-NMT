@@ -32,10 +32,11 @@ def label_smoothed_nll_loss(lprobs, target, epsilon, ignore_index=None, reduce=T
 @register_criterion('oracle_label_smoothed_cross_entropy')
 class OracleLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
 
-    def __init__(self, task, sentence_avg, label_smoothing):
+    def __init__(self, task, sentence_avg, label_smoothing, distributed_world_size):
         super().__init__(task)
         self.eps = label_smoothing
         self.sentence_avg = sentence_avg
+        self.GPU_nums = distributed_world_size
 
     @staticmethod
     def add_args(parser):
@@ -54,15 +55,17 @@ class OracleLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         3) logging outputs to display while training
         """
         net_output = model(**sample['net_input'], target=sample['target'])
-        # prob = model.get_probs()
+        prob = model.get_probs()
         loss, nll_loss = self.compute_loss(model, net_output, sample, reduce=reduce)
         sample_size = sample['target'].size(0) if self.sentence_avg else sample['ntokens']
         logging_output = {
             'loss': loss.data,
             'nll_loss': nll_loss.data,
+            'prob': prob,
             'ntokens': sample['ntokens'],
             'nsentences': sample['target'].size(0),
             'sample_size': sample_size,
+            'gpu_nums': 1,
         }
         return loss, sample_size, logging_output
 
@@ -82,7 +85,9 @@ class OracleLabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         nll_loss_sum = sum(log.get('nll_loss', 0) for log in logging_outputs)
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
-
+        GPU_nums = sum(log.get('gpu_nums', 0) for log in logging_outputs)
+        prob = sum(log.get('prob', 0) for log in logging_outputs) / GPU_nums
+        metrics.log_scalar('prob', prob)
         metrics.log_scalar('loss', loss_sum / sample_size / math.log(2), sample_size, round=3)
         metrics.log_scalar('nll_loss', nll_loss_sum / ntokens / math.log(2), ntokens, round=3)
         metrics.log_derived('ppl', lambda meters: utils.get_perplexity(meters['nll_loss'].avg))

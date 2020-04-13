@@ -333,11 +333,12 @@ class TransformerModel(FairseqEncoderDecoderModel):
             alignment_heads: Optional[int] = None,
     ):
         itr_num = self.updates if not self.epoch_decay else self.epoch
-        prob = self.decay_prob(itr_num, k=self.decay_k)
-        p = random.random()
-        if p > prob and self.training and self.use_sentence_oracle:
-            prev_output_tokens = self.get_sentence_oracle_tokens(prev_output_tokens, src_tokens, src_lengths,
-                                                                 target)
+        if self.training and self.use_sentence_oracle:
+            prob = self.decay_prob(itr_num, k=self.decay_k)
+            p = random.random()
+            if p > prob:
+                prev_output_tokens = self.get_sentence_oracle_tokens(prev_output_tokens, src_tokens, src_lengths,
+                                                                     target)
 
         encoder_out = self.encoder(src_tokens, src_lengths=src_lengths, cls_input=cls_input,
                                    return_all_hiddens=return_all_hiddens, )
@@ -983,7 +984,7 @@ def transformer_wmt_en_de(args):
 
 
 # parameters used in the "Attention Is All You Need" paper (Vaswani et al., 2017)
-@register_model_architecture("oracle_transformer", "oracle_transformer_vaswani_wmt_en_de_big")
+@register_model_architecture("oracle_transformer", "oracle_transformer_vaswani_wmt_en_en_big")
 def transformer_vaswani_wmt_en_de_big(args):
     args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 1024)
     args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 4096)
