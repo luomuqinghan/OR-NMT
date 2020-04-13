@@ -18,7 +18,8 @@ class GumbelVectorQuantizer(nn.Module):
         combine_groups,
         vq_dim,
         time_first,
-        activation=nn.GELU(),
+        #activation=nn.GELU(),
+        activation=nn.ReLU(),
         weight_proj_depth=1,
         weight_proj_factor=1,
     ):

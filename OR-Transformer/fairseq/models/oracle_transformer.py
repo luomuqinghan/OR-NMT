@@ -238,6 +238,9 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
     def set_epoch(self, epoch):
         self.epoch = epoch
+        if self.epoch_decay is True:
+            self.decay_prob(epoch, k=self.decay_k)
+            print('swith to epoch {}, prob. -> {}'.format(epoch, self.probs))
 
     def decay_prob(self, i, or_type=3, k=3000):
         if or_type == 1:  # Linear decay
@@ -263,9 +266,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         return prob_i
 
     def get_probs(self):
-        tmp = self.probs
-        self.probs = 0
-        return tmp
+        return self.probs
 
     def get_word_orcale_tokens(self, pred_logits, prev_output_tokens, epsilon=1e-6):
         B, L = prev_output_tokens.size()
@@ -276,7 +277,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         pred_tokens = torch.max(pred_logits, dim=-1)[1]
         bos_idx = prev_output_tokens[0, 0]
         pred_tokens = torch.cat([(bos_idx * torch.ones((B, 1))).to(pred_tokens), pred_tokens], dim=1)[:, :-1]
-        sample_gold_prob = self.decay_prob(self.updates)
+        sample_gold_prob = self.probs if self.epoch_decay else self.decay_prob(self.updates, k=self.decay_k)
         sample_gold_prob = sample_gold_prob * torch.ones_like(prev_output_tokens, dtype=torch.float32)
         sample_gold_mask = torch.bernoulli(sample_gold_prob).long()
 
@@ -332,23 +333,23 @@ class TransformerModel(FairseqEncoderDecoderModel):
             alignment_layer: Optional[int] = None,
             alignment_heads: Optional[int] = None,
     ):
-        itr_num = self.updates if not self.epoch_decay else self.epoch
-        if self.training and self.use_sentence_oracle:
-            prob = self.decay_prob(itr_num, k=self.decay_k)
-            p = random.random()
-            if p > prob:
-                prev_output_tokens = self.get_sentence_oracle_tokens(prev_output_tokens, src_tokens, src_lengths,
-                                                                     target)
-
+        
         encoder_out = self.encoder(src_tokens, src_lengths=src_lengths, cls_input=cls_input,
                                    return_all_hiddens=return_all_hiddens, )
 
-        if self.training and self.use_word_oracle:
-            with torch.no_grad():
+        with torch.no_grad():
+            if self.training and self.use_sentence_oracle:
+                prob = self.probs if self.epoch_decay else self.decay_prob(self.updates, k=self.decay_k)
+                p = random.random()
+                if p > prob:
+                    prev_output_tokens = self.get_sentence_oracle_tokens(
+                            prev_output_tokens, src_tokens, src_lengths, target)
+
+            if self.training and self.use_word_oracle:
                 decoder_out = self.decoder(prev_output_tokens, encoder_out=encoder_out, features_only=features_only,
                                            src_lengths=src_lengths, return_all_hiddens=return_all_hiddens, )
-                sample_prev_tokens = self.get_word_orcale_tokens(decoder_out[0].detach(), prev_output_tokens)
-            prev_output_tokens = sample_prev_tokens
+                prev_output_tokens = self.get_word_orcale_tokens(decoder_out[0].detach(), prev_output_tokens)
+
         decoder_out = self.decoder(prev_output_tokens, encoder_out=encoder_out, features_only=features_only,
                                    src_lengths=src_lengths, return_all_hiddens=return_all_hiddens, )
 

@@ -34,10 +34,9 @@ Gumbel noise:
 - `--gumbel-noise` is used as the hyper-parameter in the calculation of Gumbel noise
 - `--oracle-search-beam-size` is used to set the beam size in length-constrained decoding
 
-As for the `--arch` argument, `oracle_` should be used as the prefix of the original arch 
-for OR-NMT training, such as:
-- `--arch transformer_vaswani_wmt_en_en_big` -> `--arch oracle_transformer_vaswani_wmt_en_en_big`
-
+As for the `--arch` and `--criterion` arguments, `oracle_` should be used as the prefix for OR-NMT training, such as:
+- `--arch transformer_vaswani_wmt_en_de_big` -> `--arch oracle_transformer_vaswani_wmt_en_de_big`
+- `--criterion label_smoothed_cross_entropy` -> `--criterion oracle_label_smoothed_cross_entropy`
 Example of the script for word-level training and decaying the probability based on epoch index:
 ```shell
 export CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -49,7 +48,7 @@ python train.py $data_dir \
     --arch oracle_transformer_vaswani_wmt_en_de_big --share-all-embeddings \
     --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0 --lr-scheduler inverse_sqrt \
     --warmup-init-lr 1e-07 --warmup-updates 4000 --lr 0.0005 --min-lr 1e-09 \
-    --weight-decay 0.0 --criterion label_smoothed_cross_entropy --label-smoothing 0.1 \
+    --weight-decay 0.0 --criterion oracle_label_smoothed_cross_entropy --label-smoothing 0.1 \
     --max-tokens $batch_size --update-freq $accum --no-progress-bar --log-format json --max-update 200000 \
     --log-interval 10 --save-interval-updates 10000 --keep-interval-updates 10 --save-interval 10000 \
     --seed 1111 --skip-invalid-size-inputs-valid-test \
@@ -62,6 +61,7 @@ python train.py $data_dir \
 + The speed of word-level training is almost the same as original transformer.
 + Sentence-level training is slower than word-level training.
 + `--use-epoch-numbers-decay` and `--decay-k` need to be adapted on different training data.
++ The `prob` field in the training log means the decay probability.
 
 Test training speed and GPU memory usage on iwslt de2en training set
 
